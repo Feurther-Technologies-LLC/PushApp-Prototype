@@ -8,97 +8,23 @@ class TypeOfExercise(BodyPartAngle):
         super().__init__(landmarks)
 
     def push_up(self, counter, status):
-        left_arm_angle = self.angle_of_the_left_arm()
-        right_arm_angle = self.angle_of_the_left_arm()
-        avg_arm_angle = (left_arm_angle + right_arm_angle) // 2
+        left_arm_angle = self.angle_of_the_left_arm()  # 获取左臂的角度
+        right_arm_angle = self.angle_of_the_left_arm()  # 获取右臂的角度
+        avg_arm_angle = (left_arm_angle + right_arm_angle) // 2  # 计算两臂角度的平均值
 
-        if status:
-            if avg_arm_angle < 70:
-                counter += 1
-                status = False
-        else:
-            if avg_arm_angle > 160:
-                status = True
+        if status:  # 如果当前状态为True，表示用户正在向下做俯卧撑
+            if avg_arm_angle < 70:  # 如果平均臂角度小于70度，表示俯卧撑已到达最低点
+                counter += 1  # 计数器加1，记录一个俯卧撑的完成
+                status = False  # 状态变为False，表示用户需要返回到起始位置
+        else:  # 如果当前状态为False，表示用户正在向上恢复到起始位置
+            if avg_arm_angle > 160:  # 如果平均臂角度大于160度，表示用户已经恢复到起始位置
+                status = True  # 状态变为True，表示可以开始下一个俯卧撑
 
-        return [counter, status]
-
-    # def push_up_method_2():
-
-    def pull_up(self, counter, status):
-        nose = detection_body_part(self.landmarks, "NOSE")
-        left_elbow = detection_body_part(self.landmarks, "LEFT_ELBOW")
-        right_elbow = detection_body_part(self.landmarks, "RIGHT_ELBOW")
-        avg_shoulder_y = (left_elbow[1] + right_elbow[1]) / 2
-
-        if status:
-            if nose[1] > avg_shoulder_y:
-                counter += 1
-                status = False
-
-        else:
-            if nose[1] < avg_shoulder_y:
-                status = True
-
-        return [counter, status]
-
-    def squat(self, counter, status):
-        left_leg_angle = self.angle_of_the_right_leg()
-        right_leg_angle = self.angle_of_the_left_leg()
-        avg_leg_angle = (left_leg_angle + right_leg_angle) // 2
-
-        if status:
-            if avg_leg_angle < 70:
-                counter += 1
-                status = False
-        else:
-            if avg_leg_angle > 160:
-                status = True
-
-        return [counter, status]
-
-    def walk(self, counter, status):
-        right_knee = detection_body_part(self.landmarks, "RIGHT_KNEE")
-        left_knee = detection_body_part(self.landmarks, "LEFT_KNEE")
-
-        if status:
-            if left_knee[0] > right_knee[0]:
-                counter += 1
-                status = False
-
-        else:
-            if left_knee[0] < right_knee[0]:
-                counter += 1
-                status = True
-
-        return [counter, status]
-
-    def sit_up(self, counter, status):
-        angle = self.angle_of_the_abdomen()
-        if status:
-            if angle < 55:
-                counter += 1
-                status = False
-        else:
-            if angle > 105:
-                status = True
-
-        return [counter, status]
+        return [counter, status]  # 返回当前的计数器值和状态
 
     def calculate_exercise(self, exercise_type, counter, status):
         if exercise_type == "push-up":
             counter, status = TypeOfExercise(self.landmarks).push_up(
-                counter, status)
-        elif exercise_type == "pull-up":
-            counter, status = TypeOfExercise(self.landmarks).pull_up(
-                counter, status)
-        elif exercise_type == "squat":
-            counter, status = TypeOfExercise(self.landmarks).squat(
-                counter, status)
-        elif exercise_type == "walk":
-            counter, status = TypeOfExercise(self.landmarks).walk(
-                counter, status)
-        elif exercise_type == "sit-up":
-            counter, status = TypeOfExercise(self.landmarks).sit_up(
                 counter, status)
 
         return [counter, status]
