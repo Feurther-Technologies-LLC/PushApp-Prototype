@@ -6,7 +6,7 @@ import mediapipe as mp
 from body_part_angle import BodyPartAngle
 from types_of_exercise import TypeOfExercise
 
-# setup agrparse
+# setup argparse
 ap = argparse.ArgumentParser()
 ap.add_argument("-t",
                 "--exercise_type",
@@ -34,53 +34,79 @@ cap.set(3, 800)  # width
 cap.set(4, 480)  # height
 
 # setup mediapipe
-with mp_pose.Pose(min_detection_confidence=0.5,
-                  min_tracking_confidence=0.5) as pose:
+with mp_pose.Pose(min_detection_confidence=0.9,
+                  min_tracking_confidence=0.9) as pose:
 
     counter = 0  # movement of exercise
     status = True  # state of move
     while cap.isOpened():
-        try:
-            ret, frame = cap.read()
+        # Get video frame
+        ret, frame = cap.read()
+        frame = cv2.resize(frame, (800, 480), interpolation=cv2.INTER_AREA)
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-            frame = cv2.resize(frame, (800, 480), interpolation=cv2.INTER_AREA)
-            # recolor frame to RGB
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            frame.flags.writeable = False
-            # make detection
-            results = pose.process(frame)
-            # recolor back to BGR
-            frame.flags.writeable = True
-            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        # do prediction
+        frame_rgb.flags.writeable = False
+        results = pose.process(frame_rgb)
+        frame_rgb.flags.writeable = True
 
-            try:
-                landmarks = results.pose_landmarks.landmark
-                counter, status = TypeOfExercise(landmarks).calculate_exercise(
-                    args["exercise_type"], counter, status)
-            except:
-                pass
+        if results.pose_landmarks is not None:
+            landmarks = results.pose_landmarks.landmark
 
-            score_table(args["exercise_type"], counter, status)
+            # Initialize BodyPartAngle class
+            angles = BodyPartAngle(landmarks)
+            left_arm_angle = angles.angle_of_the_left_arm()
+            right_arm_angle = angles.angle_of_the_right_arm()
 
-            # render detections (for landmarks)
-            mp_drawing.draw_landmarks(
-                frame,
-                results.pose_landmarks,
-                mp_pose.POSE_CONNECTIONS,
-                mp_drawing.DrawingSpec(color=(255, 255, 255),
-                                       thickness=2,
-                                       circle_radius=2),
-                mp_drawing.DrawingSpec(color=(174, 139, 45),
-                                       thickness=2,
-                                       circle_radius=2),
-            )
+            # Determine colors based on angles
+            def get_color(angle):
+                if angle < 70:
+                    return (0, 255, 0)  # Green for down position
+                elif angle > 160:
+                    return (0, 0, 255)  # Red for up position
+                else:
+                    return (255, 0, 0)  # Blue for intermediate positions
 
-            cv2.imshow('Video', frame)
-            if cv2.waitKey(10) & 0xFF == ord('q'):
-                print("counter: " + str(counter))
-                break
-        except:
-            print("err counter: " + str(counter))
+            left_color = get_color(left_arm_angle)
+            right_color = get_color(right_arm_angle)
+
+            # Display the angles on the frame with color feedback and bolder font
+            cv2.putText(frame, f'Left Arm: {int(left_arm_angle)}',
+                        (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, left_color, 2)
+            cv2.putText(frame, f'Right Arm: {int(right_arm_angle)}',
+                        (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.8, right_color, 2)
+
+            # Process exercise counting
+            counter, status = TypeOfExercise(landmarks).calculate_exercise(
+                args["exercise_type"], counter, status)
+
+            # Display push-up status with bolder font
+            status_text = "Down" if status else "Up"
+            status_color = (0, 255, 0) if status else (
+                0, 0, 255)  # Green for Down, Red for Up
+            cv2.putText(frame, f'Status: {status_text}',
+                        (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.8, status_color, 2)
+
+            # Display counter with bolder font and yellow color
+            cv2.putText(frame, f'Count: {counter}',
+                        (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
+
+        # Render detections (for landmarks)
+        mp_drawing.draw_landmarks(
+            frame,
+            results.pose_landmarks,
+            mp_pose.POSE_CONNECTIONS,
+            mp_drawing.DrawingSpec(color=(255, 255, 255),
+                                   thickness=2,
+                                   circle_radius=2),
+            mp_drawing.DrawingSpec(color=(174, 139, 45),
+                                   thickness=2,
+                                   circle_radius=2),
+        )
+
+        cv2.imshow('Video', frame)
+        if cv2.waitKey(10) & 0xFF == ord('q'):
+            print("counter: " + str(counter))
             break
 
     cap.release()
