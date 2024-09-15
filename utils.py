@@ -13,7 +13,7 @@ def calculate_angle(a, b, c):
     c = np.array(c)  # End
 
     radians = np.arctan2(c[1] - b[1], c[0] - b[0]) -\
-              np.arctan2(a[1] - b[1], a[0] - b[0])
+        np.arctan2(a[1] - b[1], a[0] - b[0])
     angle = np.abs(radians * 180.0 / np.pi)
 
     # check cord sys area
@@ -46,11 +46,18 @@ def detection_body_parts(landmarks):
 
 def score_table(exercise, counter, status):
     score_table = cv2.imread("./images/score_table.png")
-    cv2.putText(score_table, "Activity : " + exercise.replace("-", " "),
+
+    # 处理None值
+    exercise_display = exercise.replace(
+        "-", " ") if exercise is not None else "N/A"
+    counter_display = str(counter) if counter is not None else "N/A"
+    status_display = str(status) if status is not None else "N/A"
+
+    cv2.putText(score_table, "Activity : " + exercise_display,
                 (10, 65), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (182, 158, 128), 2,
                 cv2.LINE_AA)
-    cv2.putText(score_table, "Counter : " + str(counter), (10, 100),
+    cv2.putText(score_table, "Counter : " + counter_display, (10, 100),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, (182, 158, 128), 2, cv2.LINE_AA)
-    cv2.putText(score_table, "Status : " + str(status), (10, 135),
+    cv2.putText(score_table, "Status : " + status_display, (10, 135),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, (182, 158, 128), 2, cv2.LINE_AA)
     cv2.imshow("Score Table", score_table)
