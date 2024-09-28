@@ -49,7 +49,7 @@ class BodyPartAngle:
 
         return abs(180 - calculate_angle(mouth_avg, shoulder_avg, hip_avg))
 
-    def angle_of_the_abdomen(self):
+    def angle_of_the_plank(self):
         # calculate angle of the avg shoulder
         r_shoulder = detection_body_part(self.landmarks, "RIGHT_SHOULDER")
         l_shoulder = detection_body_part(self.landmarks, "LEFT_SHOULDER")

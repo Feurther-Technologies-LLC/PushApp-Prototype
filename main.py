@@ -2,6 +2,7 @@
 import cv2
 import argparse
 from utils import *
+from config import Config
 import mediapipe as mp
 from body_part_angle import BodyPartAngle
 from types_of_exercise import TypeOfExercise
@@ -30,19 +31,24 @@ if args["video_source"] is not None:
 else:
     cap = cv2.VideoCapture(0)  # webcam
 
-cap.set(3, 800)  # width
-cap.set(4, 480)  # height
+cap.set(3, Config.VIDEO_RESIZE_WIDTH)  # width
+cap.set(4, Config.VIDEO_RESIZE_HEIGHT)  # height
 
 # setup mediapipe
-with mp_pose.Pose(min_detection_confidence=0.9,
-                  min_tracking_confidence=0.9) as pose:
+with mp_pose.Pose(min_detection_confidence=Config.DETECTION_CONFIDENCE,
+                  min_tracking_confidence=Config.TRACKING_CONFIDENCE) as pose:
 
     counter = 0  # movement of exercise
     status = True  # state of move
     while cap.isOpened():
         # Get video frame
         ret, frame = cap.read()
-        frame = cv2.resize(frame, (800, 480), interpolation=cv2.INTER_AREA)
+        if ret:
+            frame = cv2.resize(
+                frame, (Config.VIDEO_RESIZE_WIDTH, Config.VIDEO_RESIZE_HEIGHT), interpolation=cv2.INTER_AREA)
+        else:
+            print("无法读取视频帧")
+            break
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         # do prediction
@@ -50,50 +56,55 @@ with mp_pose.Pose(min_detection_confidence=0.9,
         results = pose.process(frame_rgb)
         frame_rgb.flags.writeable = True
 
+        left_color = Config.COLOR_GREEN
+        right_color = Config.COLOR_GREEN
+        plank_color = Config.COLOR_GREEN
+        left_arm_angle, right_arm_angle = 0, 0
+        plank_angle = 0
+        is_prone = False
+        is_plank = False
         if results.pose_landmarks is not None:
             landmarks = results.pose_landmarks.landmark
+            # 判断人是否是站着的
+            is_prone = isProne(landmarks)
+            if is_prone:
+                # 判断是否进入了平板式
+                is_plank = isPlank(landmarks)
+                if is_plank:
+                    # 进行俯卧撑检测
+                    angles = BodyPartAngle(landmarks)
+                    left_arm_angle = angles.angle_of_the_left_arm()
+                    right_arm_angle = angles.angle_of_the_right_arm()
+                    plank_angle = angles.angle_of_the_plank()
 
-            # Initialize BodyPartAngle class
-            angles = BodyPartAngle(landmarks)
-            left_arm_angle = angles.angle_of_the_left_arm()
-            right_arm_angle = angles.angle_of_the_right_arm()
+                    # Process exercise counting
+                    counter, status = TypeOfExercise(landmarks).calculate_exercise(
+                        args["exercise_type"], counter, status, Config.PUSHUP_ARM_DOWN_THRESHOLD, Config.PUSHUP_ARM_UP_THRESHOLD)
 
-            # Determine colors based on angles
-            def get_color(angle):
-                if angle < 70:
-                    return (0, 255, 0)  # Green for down position
-                elif angle > 160:
-                    return (0, 0, 255)  # Red for up position
                 else:
-                    return (255, 0, 0)  # Blue for intermediate positions
+                    print("用户未进入平板式")
+            else:
+                print("用户未进入平板式")
 
-            left_color = get_color(left_arm_angle)
-            right_color = get_color(right_arm_angle)
+        else:
+            # 无法检测姿势
+            status = "N/A"
+            left_arm_angle = "N/A"
+            right_arm_angle = "N/A"
 
-            # Display the angles on the frame with color feedback and bolder font
-            cv2.putText(frame, f'Left Arm: {int(left_arm_angle)}',
-                        (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, left_color, 2)
-            cv2.putText(frame, f'Right Arm: {int(right_arm_angle)}',
-                        (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.8, right_color, 2)
-
-            # Process exercise counting
-            counter, status = TypeOfExercise(landmarks).calculate_exercise(
-                args["exercise_type"], counter, status)
-
-            # Display push-up status with bolder font
-            status_text = "Down" if status else "Up"
-            status_color = (0, 255, 0) if status else (
-                0, 0, 255)  # Green for Down, Red for Up
-            cv2.putText(frame, f'Status: {status_text}',
-                        (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.8, status_color, 2)
-
-            # Display counter with bolder font and yellow color
-            cv2.putText(frame, f'Count: {counter}',
-                        (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
-
+        is_ready = is_prone and is_plank
+        print(f"is_prone: {is_prone}   is_plank: {is_plank}")
+        # add text to image frame
+        processed_frame = add_text_to_frame(frame,
+                                            left_arm_angle,
+                                            right_arm_angle,
+                                            plank_angle,
+                                            status,
+                                            counter,
+                                            is_ready)
         # Render detections (for landmarks)
         mp_drawing.draw_landmarks(
-            frame,
+            processed_frame,
             results.pose_landmarks,
             mp_pose.POSE_CONNECTIONS,
             mp_drawing.DrawingSpec(color=(255, 255, 255),
@@ -104,7 +115,7 @@ with mp_pose.Pose(min_detection_confidence=0.9,
                                    circle_radius=2),
         )
 
-        cv2.imshow('Video', frame)
+        cv2.imshow('Video', processed_frame)
         if cv2.waitKey(10) & 0xFF == ord('q'):
             print("counter: " + str(counter))
             break
