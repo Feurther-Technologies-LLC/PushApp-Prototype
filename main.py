@@ -1,4 +1,3 @@
-# import packages
 import cv2
 import argparse
 from utils import *
@@ -6,6 +5,8 @@ from config import Config
 import mediapipe as mp
 from body_part_angle import BodyPartAngle
 from types_of_exercise import TypeOfExercise
+from playsound import playsound
+import threading  # 导入线程库
 
 # setup argparse
 ap = argparse.ArgumentParser()
@@ -25,6 +26,18 @@ args = vars(ap.parse_args())
 mp_drawing = mp.solutions.drawing_utils
 mp_pose = mp.solutions.pose
 
+# 设置音频文件路径
+sound_not_ready = "sound/NotReady.MP3"
+sound_push_up = "sound/PushUP!.MP3"
+sound_ready = "sound/Ready.MP3"
+
+# 播放音频的函数，使用线程避免阻塞
+
+
+def play_sound(sound_file):
+    threading.Thread(target=playsound, args=(sound_file,), daemon=True).start()
+
+
 # setting the video source
 if args["video_source"] is not None:
     cap = cv2.VideoCapture(args["video_source"])
@@ -33,6 +46,8 @@ else:
 
 cap.set(3, Config.VIDEO_RESIZE_WIDTH)  # width
 cap.set(4, Config.VIDEO_RESIZE_HEIGHT)  # height
+
+ready_status = False  # 用于标记 is_ready 的状态
 
 # setup mediapipe
 with mp_pose.Pose(min_detection_confidence=Config.DETECTION_CONFIDENCE,
@@ -79,8 +94,13 @@ with mp_pose.Pose(min_detection_confidence=Config.DETECTION_CONFIDENCE,
                     plank_angle = angles.angle_of_the_plank()
 
                     # Process exercise counting
-                    counter, status = TypeOfExercise(landmarks).calculate_exercise(
+                    new_counter, status = TypeOfExercise(landmarks).calculate_exercise(
                         args["exercise_type"], counter, status, Config.PUSHUP_ARM_DOWN_THRESHOLD, Config.PUSHUP_ARM_UP_THRESHOLD)
+
+                    # 当counter增加时，播放PushUP!音频
+                    if new_counter > counter:
+                        play_sound(sound_push_up)
+                    counter = new_counter
 
                 else:
                     print("用户未进入平板式")
@@ -93,7 +113,14 @@ with mp_pose.Pose(min_detection_confidence=Config.DETECTION_CONFIDENCE,
             left_arm_angle = "N/A"
             right_arm_angle = "N/A"
 
+        # 检查 is_ready 的状态变化
         is_ready = is_prone and is_plank
+        if is_ready and not ready_status:
+            play_sound(sound_ready)  # 准备好时播放 ready 音频
+        elif not is_ready and ready_status:
+            play_sound(sound_not_ready)  # 取消准备状态时播放 NotReady 音频
+        ready_status = is_ready  # 更新 ready 状态
+
         print(f"is_prone: {is_prone}   is_plank: {is_plank}")
         # add text to image frame
         processed_frame = add_text_to_frame(frame,

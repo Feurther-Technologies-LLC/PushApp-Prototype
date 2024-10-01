@@ -132,4 +132,4 @@ def isProne(landmarks) -> bool:
 
 
 def isPlank(plank_angle) -> bool:
-    return plank_angle >= 160
+    return plank_angle >= 140
