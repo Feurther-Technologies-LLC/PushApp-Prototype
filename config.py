@@ -8,14 +8,16 @@ class Config:
     PUSHUP_PLANK_ANGLE_MAX = 200
 
     # 平板支撑检测阈值
-    PLANK_UP_THRESHOLD = 150
-    PLANK_Down_THRESHOLD = 150
+    PLANK_THRESHOLD = 150
+
+    # 站立检测阈值
+    HEIGHT_DIFF_THRESHOLD = 0.5
 
     # 视频处理参数
     VIDEO_RESIZE_WIDTH = 800
     VIDEO_RESIZE_HEIGHT = 480
 
-    # 其他参数
+    # Mediapipe 检测阈值
     DETECTION_CONFIDENCE = 0.9
     TRACKING_CONFIDENCE = 0.9
 
