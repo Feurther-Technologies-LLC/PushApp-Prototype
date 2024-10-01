@@ -82,7 +82,7 @@ def add_text_to_frame(frame,
     right_color = get_color(
         right_arm_angle, Config.PUSHUP_ARM_DOWN_THRESHOLD, Config.PUSHUP_ARM_UP_THRESHOLD)
 
-    plank_color = Config.COLOR_GREEN if plank_angle >= 160 else Config.COLOR_RED
+    plank_color = Config.COLOR_GREEN if plank_angle >= Config.PLANK_THRESHOLD else Config.COLOR_RED
 
     # Display the angles on the frame with color feedback and bolder font
     cv2.putText(frame, f'Left Arm: {format_angle(left_arm_angle)}',
@@ -125,11 +125,11 @@ def isProne(landmarks) -> bool:
     shoulder_y = (left_shoulder_y + right_shoulder_y) / 2
 
     height_diff = ankle_y-shoulder_y
-    if height_diff > 0.5:  # threshold 是一个合理的数值，如0.5
+    if height_diff > Config.HEIGHT_DIFF_THRESHOLD:  # threshold 是一个合理的数值，如0.5
         return False
     else:
         return True
 
 
 def isPlank(plank_angle) -> bool:
-    return plank_angle >= 140
+    return plank_angle >= Config.PLANK_THRESHOLD
