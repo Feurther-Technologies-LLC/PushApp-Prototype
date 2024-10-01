@@ -57,7 +57,6 @@ def score_table(exercise, counter, status):
 def get_color(angle, down_threshold, up_threshold):
     if angle == "N/A":
         return Config.COLOR_BLUE
-
     if angle < down_threshold:
         return Config.COLOR_GREEN  # Green for down position
     elif angle > up_threshold:
@@ -132,5 +131,5 @@ def isProne(landmarks) -> bool:
         return True
 
 
-def isPlank(landmarks) -> bool:
-    return True
+def isPlank(plank_angle) -> bool:
+    return plank_angle >= 160

@@ -69,10 +69,11 @@ with mp_pose.Pose(min_detection_confidence=Config.DETECTION_CONFIDENCE,
             is_prone = isProne(landmarks)
             if is_prone:
                 # 判断是否进入了平板式
-                is_plank = isPlank(landmarks)
+                angles = BodyPartAngle(landmarks)
+                plank_angle = angles.angle_of_the_plank()
+                is_plank = isPlank(plank_angle)
                 if is_plank:
                     # 进行俯卧撑检测
-                    angles = BodyPartAngle(landmarks)
                     left_arm_angle = angles.angle_of_the_left_arm()
                     right_arm_angle = angles.angle_of_the_right_arm()
                     plank_angle = angles.angle_of_the_plank()
