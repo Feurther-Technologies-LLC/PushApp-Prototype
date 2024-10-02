@@ -32,25 +32,6 @@ def detection_body_part(landmarks, body_part_name):
         landmarks[mp_pose.PoseLandmark[body_part_name].value].visibility
     ]
 
-
-def score_table(exercise, counter, status):
-    score_table = cv2.imread("./images/score_table.png")
-
-    # 处理None值
-    exercise_display = exercise.replace(
-        "-", " ") if exercise is not None else "N/A"
-    counter_display = str(counter) if counter is not None else "N/A"
-    status_display = str(status) if status is not None else "N/A"
-
-    cv2.putText(score_table, "Activity : " + exercise_display,
-                (10, 65), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (182, 158, 128), 2,
-                cv2.LINE_AA)
-    cv2.putText(score_table, "Counter : " + counter_display, (10, 100),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (182, 158, 128), 2, cv2.LINE_AA)
-    cv2.putText(score_table, "Status : " + status_display, (10, 135),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (182, 158, 128), 2, cv2.LINE_AA)
-    cv2.imshow("Score Table", score_table)
-
 # Determine colors based on angles
 
 
@@ -115,7 +96,7 @@ def add_text_to_frame(frame,
     return frame
 
 
-def isProne(landmarks) -> bool:
+def ProneDetection(landmarks) -> bool:
     left_ankle_y = landmarks[mp_pose.PoseLandmark.LEFT_ANKLE].y
     right_ankle_y = landmarks[mp_pose.PoseLandmark.RIGHT_ANKLE].y
     left_shoulder_y = landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER].y
@@ -131,5 +112,5 @@ def isProne(landmarks) -> bool:
         return True
 
 
-def isPlank(plank_angle) -> bool:
+def PlankDetection(plank_angle) -> bool:
     return plank_angle >= Config.PLANK_THRESHOLD
