@@ -42,9 +42,10 @@ def main(arg):
     with mp_pose.Pose(min_detection_confidence=Config.DETECTION_CONFIDENCE,
                       min_tracking_confidence=Config.TRACKING_CONFIDENCE) as pose:
 
-        counter = 0  # movement of exercise
+        counter = 0
         status = True  # state of move
         while cap.isOpened():
+
             # Get video frame
             ret, frame = cap.read()
             if ret:
@@ -60,53 +61,57 @@ def main(arg):
             results = pose.process(frame_rgb)
             frame_rgb.flags.writeable = True
 
+            # init variables
             left_arm_angle, right_arm_angle = 0, 0
             plank_angle = 0
             is_prone = False
             is_plank = False
-            if results.pose_landmarks is not None:
-                landmarks = results.pose_landmarks.landmark
-                # 判断人是否是站着的
-                is_prone = isProne(landmarks)
-                if is_prone:
-                    # 判断是否进入了平板式
-                    angles = BodyPartAngle(landmarks)
-                    plank_angle = angles.angle_of_the_plank()
-                    is_plank = isPlank(plank_angle)
-                    if is_plank:
-                        # 进行俯卧撑检测
-                        left_arm_angle = angles.angle_of_the_left_arm()
-                        right_arm_angle = angles.angle_of_the_right_arm()
 
-                        # Process exercise counting
-                        new_counter, status = TypeOfExercise(landmarks).calculate_exercise(
-                            args["exercise_type"], counter, status, Config.PUSHUP_ARM_DOWN_THRESHOLD, Config.PUSHUP_ARM_UP_THRESHOLD)
-
-                        # 当counter增加时，播放PushUP!音频
-                        if new_counter > counter:
-                            play_sound(sound_push_up)
-                        counter = new_counter
-
-                    else:
-                        print("用户未进入平板式")
-                else:
-                    print("用户未进入平板式")
-
-            else:
+            # 判断是否识别到了人
+            if results.pose_landmarks is None:
                 # 无法检测姿势
                 status = "N/A"
-                left_arm_angle = "N/A"
-                right_arm_angle = "N/A"
+                left_arm_angle = 0
+                right_arm_angle = 0
+                continue
+
+            landmarks = results.pose_landmarks.landmark
+
+            # 判断人是否是站着的
+            is_prone = ProneDetection(landmarks)
+            if not is_prone:
+                print("用户未进入俯卧式")
+                continue
+
+            # 判断是否进入了平板式
+            angles = BodyPartAngle(landmarks)
+            plank_angle = angles.angle_of_the_plank()
+            is_plank = PlankDetection(plank_angle)
+            if not is_plank:
+                print("用户未进入平板式")
+                continue
+
+            # 进行俯卧撑检测
+            left_arm_angle = angles.angle_of_the_left_arm()
+            right_arm_angle = angles.angle_of_the_right_arm()
+
+            new_counter, status = TypeOfExercise(landmarks).calculate_exercise(
+                args["exercise_type"], counter, status, Config.PUSHUP_ARM_DOWN_THRESHOLD, Config.PUSHUP_ARM_UP_THRESHOLD)
+
+            # 当counter增加时，播放PushUP!音频
+            if new_counter > counter:
+                play_sound(sound_push_up)
+            counter = new_counter
 
             # 检查 is_ready 的状态变化
             is_ready = is_prone and is_plank
+            # 当用户从未准备好（ready_status 是 False）变为准备好（is_ready 是 True）时,播放音频
             if is_ready and not ready_status:
-                play_sound(sound_ready)  # 准备好时播放 ready 音频
+                play_sound(sound_ready)
             elif not is_ready and ready_status:
-                play_sound(sound_not_ready)  # 取消准备状态时播放 NotReady 音频
+                play_sound(sound_not_ready)
             ready_status = is_ready  # 更新 ready 状态
 
-            print(f"is_prone: {is_prone}   is_plank: {is_plank}")
             # add text to image frame
             processed_frame = add_text_to_frame(frame,
                                                 left_arm_angle,
@@ -115,7 +120,7 @@ def main(arg):
                                                 status,
                                                 counter,
                                                 is_ready)
-            # Render detections (for landmarks)
+            # Draw landmarks
             mp_drawing.draw_landmarks(
                 processed_frame,
                 results.pose_landmarks,
