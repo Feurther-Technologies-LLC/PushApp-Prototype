@@ -8,6 +8,7 @@ from types_of_exercise import TypeOfExercise
 from playsound import playsound
 import threading  # 导入线程库
 
+# Hello TianMing
 
 def play_sound(sound_file: str) -> None:
     threading.Thread(target=playsound, args=(
